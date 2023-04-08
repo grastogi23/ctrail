@@ -9,7 +9,10 @@ import os
 import traceback
 import networkx
 import ijson
+import logging
 import matplotlib.pyplot as plt
+
+log = logging.getLogger(__name__)
 
 class CtrailStats(dict):
     """Class to hold different stats and improve initialization"""
@@ -57,11 +60,11 @@ def idgraph_accumulator(rec: dict, idgraph: networkx.Graph, stats: CtrailStats):
             stats['nodes'][rec['userIdentity']['arn']] = v1_index
             nodeData.update(rec['userIdentity'])
             idgraph.add_node((v1_index, nodeData['arn']))
-            print("adding v1: node", rec['eventName'], nodeData, 'at', v1_index)
+            log.info("adding v1: node %s %s at %s", rec['eventName'], nodeData, v1_index)
         else:
             v1_index = stats['nodes'][v1_id]
     except KeyError:
-        print('error', rec)
+        log.info('error', rec)
 
     for resource in rec.get('resources', []):
         v2_index = None
@@ -73,7 +76,7 @@ def idgraph_accumulator(rec: dict, idgraph: networkx.Graph, stats: CtrailStats):
             del nodeData['ARN']
             stats['nodes'][resource['ARN']] = v2_index
             idgraph.add_node((v2_index, nodeData['arn']))
-            print("adding v2: node", rec['eventName'], nodeData, 'at', v2_index)
+            log.info("adding v2: node %s %s at %s", rec['eventName'], nodeData, v2_index)
         else:
             v2_index = stats['nodes'][resource['ARN']]
 
@@ -113,9 +116,9 @@ def cloud_trail_idgraph(data_dir: str, skip_graph: bool)->None:
 
     cloud_trail_walker(data_dir, idgraph_accumulator, idgraph=idgraph, stats=stats)
 
-    print('num nodes', idgraph.number_of_nodes())
-    print('num edges', idgraph.number_of_edges())
-    print('Summary\n', stats.summary())
+    log.info('num nodes %s', idgraph.number_of_nodes())
+    log.info('num edges %s', idgraph.number_of_edges())
+    log.info('Summary\n %s', stats.summary())
     networkx.draw(idgraph, with_labels = True)
     if not skip_graph:
         plt.show()
@@ -129,10 +132,11 @@ if __name__ == '__main__':
         output: networkx
         """
     )
+    logging.basicConfig(level=logging.INFO)
     parser.add_argument('-d', '--data_dir', help='location of the data files')
     parser.add_argument('-s', '--skip_graph', default=False, action="store_true", help='show graph')
     args = parser.parse_args()
     s_dir = args.data_dir
     is_skip_graph = args.skip_graph
-    print('building graph', s_dir, "show graph", is_skip_graph)
+    log.info('building graph %s skip_graph %s', s_dir, is_skip_graph)
     cloud_trail_idgraph(s_dir, is_skip_graph)
